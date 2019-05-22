@@ -36,11 +36,11 @@ Mat DeHaze::guildFilter(Mat I, Mat p, int r, double eps)
 	%   - regularization parameter: eps
 	*/
 
-	cv::Mat _I;
+	Mat _I;
 	I.convertTo(_I, CV_64FC1);
 	I = _I;
 
-	cv::Mat _p;
+	Mat _p;
 	p.convertTo(_p, CV_64FC1);
 	p = _p;
 
@@ -49,49 +49,49 @@ Mat DeHaze::guildFilter(Mat I, Mat p, int r, double eps)
 	int wid = I.cols;
 
 	//N = boxfilter(ones(hei, wid), r); % the size of each local patch; N=(2r+1)^2 except for boundary pixels.  
-	cv::Mat N;
-	cv::boxFilter(cv::Mat::ones(hei, wid, I.type()), N, CV_64FC1, cv::Size(r, r));
+	Mat N;
+	boxFilter(cv::Mat::ones(hei, wid, I.type()), N, CV_64FC1, cv::Size(r, r));
 
 	//mean_I = boxfilter(I, r) ./ N;  
-	cv::Mat mean_I;
-	cv::boxFilter(I, mean_I, CV_64FC1, cv::Size(r, r));
+	Mat mean_I;
+	boxFilter(I, mean_I, CV_64FC1, cv::Size(r, r));
 
 	//mean_p = boxfilter(p, r) ./ N;  
-	cv::Mat mean_p;
-	cv::boxFilter(p, mean_p, CV_64FC1, cv::Size(r, r));
+	Mat mean_p;
+	boxFilter(p, mean_p, CV_64FC1, cv::Size(r, r));
 
 	//mean_Ip = boxfilter(I.*p, r) ./ N;  
-	cv::Mat mean_Ip;
-	cv::boxFilter(I.mul(p), mean_Ip, CV_64FC1, cv::Size(r, r));
+	Mat mean_Ip;
+	boxFilter(I.mul(p), mean_Ip, CV_64FC1, cv::Size(r, r));
 
 	//cov_Ip = mean_Ip - mean_I .* mean_p; % this is the covariance of (I, p) in each local patch.  
-	cv::Mat cov_Ip = mean_Ip - mean_I.mul(mean_p);
+	Mat cov_Ip = mean_Ip - mean_I.mul(mean_p);
 
 	//mean_II = boxfilter(I.*I, r) ./ N;  
-	cv::Mat mean_II;
-	cv::boxFilter(I.mul(I), mean_II, CV_64FC1, cv::Size(r, r));
+	Mat mean_II;
+	boxFilter(I.mul(I), mean_II, CV_64FC1, cv::Size(r, r));
 
 	//var_I = mean_II - mean_I .* mean_I;  
-	cv::Mat var_I = mean_II - mean_I.mul(mean_I);
+	Mat var_I = mean_II - mean_I.mul(mean_I);
 
 	//a = cov_Ip ./ (var_I + eps); % Eqn. (5) in the paper;     
-	cv::Mat a = cov_Ip / (var_I + eps);
+	Mat a = cov_Ip / (var_I + eps);
 
 	//b = mean_p - a .* mean_I; % Eqn. (6) in the paper;  
-	cv::Mat b = mean_p - a.mul(mean_I);
+	Mat b = mean_p - a.mul(mean_I);
 
 	//mean_a = boxfilter(a, r) ./ N;  
-	cv::Mat mean_a;
-	cv::boxFilter(a, mean_a, CV_64FC1, cv::Size(r, r));
+	Mat mean_a;
+	boxFilter(a, mean_a, CV_64FC1, cv::Size(r, r));
 	mean_a = mean_a / N;
 
 	//mean_b = boxfilter(b, r) ./ N;  
-	cv::Mat mean_b;
-	cv::boxFilter(b, mean_b, CV_64FC1, cv::Size(r, r));
+	Mat mean_b;
+	boxFilter(b, mean_b, CV_64FC1, cv::Size(r, r));
 	mean_b = mean_b / N;
 
 	//q = mean_a .* I + mean_b; % Eqn. (8) in the paper;  
-	cv::Mat q = mean_a.mul(I) + mean_b;
+	Mat q = mean_a.mul(I) + mean_b;
 
 	return q;
 }
@@ -119,7 +119,6 @@ Mat DeHaze::getDarkChannel(Mat &src)
 			{
 				px = pixel.val[2];
 			}
-			
 			cvSetReal2D(&temp, i, j, px);
 		}
 	}
