@@ -98,28 +98,32 @@ Mat DeHaze::guildFilter(Mat I, Mat p, int r, double eps)
 Mat DeHaze::getDarkChannel(Mat &src)
 {
 	CvSize size = cvSize((src).rows, (src).cols);
-	Mat temp = Mat(size, IPL_DEPTH_8U, 1);
-	CvScalar pixel;
-	double  px;
+	Mat temp = Mat(size, CV_8UC1, Scalar(0));
+	uchar** pixel1;
+	uchar** pixel2;
+	uchar** pixel3;
+	uchar  px;
 	for (int i = 0; i < src.rows; i++)
 	{
 		for (int j = 0; j < src.cols; j++)
 		{
-			pixel = cvGet2D(&src, i, j);
-			if (pixel.val[0]<pixel.val[1])
+			pixel1[i][j] = src.ptr<uchar>(i)[j * 3];
+			pixel2[i][j] = src.ptr<uchar>(i)[j * 3+1];
+			pixel3[i][j] = src.ptr<uchar>(i)[j * 3 + 2];
+			if (pixel1[i][j]<pixel2[i][j])
 			{
-				px = pixel.val[0];
+				px = pixel1[i][j];
 			}
 			else
 			{
-				px = pixel.val[1];
+				px = pixel2[i][j];
 			}
 
-			if (px >pixel.val[2])
+			if (px >pixel3[i][j])
 			{
-				px = pixel.val[2];
+				px = pixel3[i][j];
 			}
-			cvSetReal2D(&temp, i, j, px);
+			temp.ptr<uchar>(i)[j] = px;
 		}
 	}
 	return  temp;
