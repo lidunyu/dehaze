@@ -135,7 +135,9 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 	int pointNum = 0;   //满足要求的像素点数
 	double A;        //大气光强A
 	double pix;    //暗通道图中照亮度的前0.1%范围的像素值
-	CvScalar pixel;   //按图中符合A的点，在雾图中对应的像素
+	uchar** pixel1;
+	uchar** pixel2;//按图中符合A的点，在雾图中对应的像素,三个通道，p1、p2、p3
+	uchar** pixel3;
 
 	float stretch_p[256], stretch_p1[256], stretch_num[256];
 	//清空三个数组,初始化填充数组元素为0    
@@ -150,7 +152,7 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 	{
 		for (j = 0; j<nWidth; j++)
 		{
-			double  pixel0 = cvGetReal2D(&dark, i, j);
+			uchar  pixel0 = dark.ptr<uchar>(i)[j];
 			int   pixel = (int)pixel0;
 			stretch_num[pixel]++;
 		}
@@ -181,14 +183,16 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 	{
 		for (j = 0; j < hazeImage.cols; j++)
 		{
-			double temp = cvGetReal2D(&dark, i, j);
+			uchar temp = dark.ptr<uchar>(i)[j];
 			if (temp > pix)
 			{
-				pixel = cvGet2D(&hazeImage, i, j);
+				pixel1[i][j] = hazeImage.ptr<uchar>(i)[j * 3];
+				pixel2[i][j] = hazeImage.ptr<uchar>(i)[j * 3 + 1];
+				pixel3[i][j] = hazeImage.ptr<uchar>(i)[j * 3 + 2];
 				pointNum++;
-				sum += pixel.val[0];
-				sum += pixel.val[1];
-				sum += pixel.val[2];
+				sum += pixel1[i][j];
+				sum += pixel2[i][j];
+				sum += pixel3[i][j];
 
 			}
 		}
@@ -203,7 +207,8 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 
 Mat DeHaze::getMinIcy(Mat dark, int w)
 {
-	Mat Icy = Mat(cvGetSize(&dark), IPL_DEPTH_8U, 1);
+	CvSize size = cvSize((dark).rows, (dark).cols);
+	Mat Icy = Mat(size, CV_8UC1, Scalar(0));
 	int hei = dark.rows;
 	int wid = dark.cols;
 	int hw = hei / w;
@@ -212,13 +217,13 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 	{
 		for (int j = w; j < (ww - 1)*w; j += w)
 		{
-			double p = cvGetReal2D(&dark, i - 1, j - 1);  //得到窗口最右下角的一个像素点
+			uchar p =dark.ptr<uchar>(i - 1)[j - 1];  //得到窗口最右下角的一个像素点
 														 //得到窗口最小的像素值
 			for (int ii = i - w; ii < i; ii++)
 			{
 				for (int jj = j - w; jj < j; jj++)
 				{
-					double newp = cvGetReal2D(&dark, ii, jj);
+					uchar newp = dark.ptr<uchar>(ii)[jj];
 					if (newp < p)
 					{
 						p = newp;
@@ -230,7 +235,7 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 			{
 				for (int jj = j - w; jj < j; jj++)
 				{
-					cvSetReal2D(&Icy, ii, jj, p);
+					Icy.ptr<uchar>(ii)[jj] = p;
 				}
 			}
 
@@ -240,14 +245,13 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 	//处理最右边一列  不包含最下一个子块
 	for (int i = w; i < (hw - 1)*w; i += w)
 	{
-		double p = cvGetReal2D(&dark, i - 1, wid - 1);  //得到窗口最右下角的一个像素点
+		uchar p = dark.ptr<uchar>(i - 1)[wid - 1];  //得到窗口最右下角的一个像素点
 		for (int ii = i - w; ii < i; ii++)
 		{
-
 			for (int j = (ww - 1)*w; j < wid; j++)
 			{
 				//得到窗口最小的像素值
-				double newp = cvGetReal2D(&dark, ii, j);
+				uchar newp = dark.ptr<uchar>(ii)[j];
 				if (newp < p)
 				{
 					p = newp;
@@ -261,7 +265,7 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 
 			for (int j = (ww - 1)*w; j < wid; j++)
 			{
-				cvSetReal2D(&Icy, ii, j, p);
+				Icy.ptr<uchar>(ii)[j] = p;
 			}
 		}
 	}
@@ -270,13 +274,13 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 	//处理最下一行 不包含最后一个子块
 	for (int j = w; j < (ww - 1)*w; j += w)
 	{
-		double p = cvGetReal2D(&dark, hei - 1, j);  //得到窗口最右下角的一个像素点
+		uchar p = dark.ptr<char>(hei - 1)[j];  //得到窗口最右下角的一个像素点
 		for (int i = (hw - 1)*w; i < hei; i++)
 		{
 			for (int jj = j - w; jj < j; jj++)
 			{
 				//得到窗口最小的像素值
-				double newp = cvGetReal2D(&dark, i, jj);
+				uchar newp = dark.ptr<uchar>(i)[jj];
 				if (newp < p)
 				{
 					p = newp;
@@ -290,20 +294,20 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 
 			for (int jj = j - w; jj < j; jj++)
 			{
-				cvSetReal2D(&Icy, i, jj, p);
+				Icy.ptr<uchar>(i)[jj] = p;
 			}
 		}
 
 	}
 
 	//处理最右下角的一个子块
-	double p = cvGetReal2D(&dark, hei - 1, wid - 1);  //得到窗口最右下角的一个像素点
+	uchar p = dark.ptr<uchar>(hei - 1)[wid - 1];  //得到窗口最右下角的一个像素点
 	for (int i = (hw - 1)*w; i < hei; i++)
 	{
 		for (int j = (ww - 1)*w; j < wid; j++)
 		{
 			//得到窗口最小的像素值
-			double newp = cvGetReal2D(&dark, i, j);
+			uchar newp = dark.ptr<uchar>(i)[j];
 			if (newp < p)
 			{
 				p = newp;
@@ -315,28 +319,27 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 	{
 		for (int j = (ww - 1)*w; j < wid; j++)
 		{
-			cvSetReal2D(&Icy, i, j, p);
-
+			Icy.ptr<uchar>(i)[j] = p;
 		}
 	}
-
 	return Icy;
 
 }
 
 Mat DeHaze::getTransmission(Mat Icy, double Ac)
 {
-	Mat t = Mat(cvGetSize(&Icy), IPL_DEPTH_8U, 1);
+	CvSize size = cvSize((Icy).rows, (Icy).cols);
+	Mat t = Mat(size, IPL_DEPTH_8U, Scalar(0));
 	for (int i = 0; i < t.rows; i++)
 	{
 		for (int j = 0; j < t.cols; j++)
 		{
-			double temp = cvGetReal2D(&Icy, i, j);
-			double tempt = 1 - 0.95*temp / Ac;
+			uchar temp = Icy.ptr<uchar>(i)[j];
+			uchar tempt = (uchar)(1 - 0.95*temp / Ac);
 			cvSetReal2D(&t, i, j, tempt * 255);
+			t.ptr<uchar>(i)[j] = temp * 255;
 		}
 	}
-
 	return t;
 }
 
@@ -354,16 +357,17 @@ Mat DeHaze::getimage(Mat &a)
 
 Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
 {
-	Mat dehazedImage = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 3);
-	Mat r = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 1);
-	Mat g = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 1);
-	Mat b = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 1);
+	CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
+	Mat dehazedImage = Mat(size, CV_8UC3, Scalar(0,0,0));
+	Mat r = Mat(size, CV_8UC1, Scalar(0));
+	Mat g = Mat(size, CV_8UC1, Scalar(0));
+	Mat b = Mat(size, CV_8UC1, Scalar(0));
 
 	cvSplit(&hazeImage, &b, &g, &r, NULL);
 
-	Mat dehaze_r = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 1);
-	Mat dehaze_g = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 1);
-	Mat dehaze_b = Mat(cvGetSize(&hazeImage), IPL_DEPTH_8U, 1);
+	Mat dehaze_r = Mat(size, CV_8UC1, Scalar(0));
+	Mat dehaze_g = Mat(size, CV_8UC1, Scalar(0));
+	Mat dehaze_b = Mat(size, CV_8UC1, Scalar(0));
 
 	for (int i = 0; i < r.rows; i++)
 	{
@@ -375,9 +379,9 @@ Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
 				tempt = 25.5;
 			}
 
-			double I_r = cvGetReal2D(&r, i, j);
-			double de_r = 255 * (I_r - Ac) / tempt + Ac;
-			cvSetReal2D(&dehaze_r, i, j, de_r);
+			double I_r = r.ptr<uchar>(i)[j];
+			uchar de_r = (uchar)(255 * (I_r - Ac) / tempt + Ac);
+			dehaze_r.ptr<uchar>(i)[j] = de_r;
 
 			double I_g = cvGetReal2D(&g, i, j);
 			double de_g = 255 * (I_g - Ac) / tempt + Ac;
