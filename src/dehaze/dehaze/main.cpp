@@ -4,15 +4,15 @@ int main()
 {
 	Mat image= imread("D:\\imageal\\dehaze\\data\\1.jpg");
 	CvSize size = cvSize((image).rows, (image).cols);
-	Mat g = Mat(size, IPL_DEPTH_8U, 1);
+	Mat g = Mat(size, CV_8UC1);
 	g = DeHaze::getInstance()->getDarkChannel(image);
 	double A = DeHaze::getInstance()->getA(g, image);   //大气光强A
 
-	Mat Icy = Mat(size, IPL_DEPTH_8U, 1);
+	Mat Icy = Mat(size, CV_8UC1);
 	Icy = DeHaze::getInstance()->getMinIcy(g, 5);
 
 	//投射图t
-	Mat t = Mat(size, IPL_DEPTH_8U, 1);
+	Mat t = Mat(size, CV_8UC1);
 	t = DeHaze::getInstance()->getTransmission(Icy, A);
 
 	//获得guide image
@@ -26,10 +26,9 @@ int main()
 	IplImage* guidedt = cvCloneImage(&(IplImage)q);
 	Mat dehazedImage = Mat(size, IPL_DEPTH_8U, 3);
 	dehazedImage = DeHaze::getInstance()->getDehazedImage(image, guidedt, A);
-	imwrite("C:\\Users\\徐图之\\Desktop\\dark .jpg", g);
-	imwrite("C:\\Users\\徐图之\\Desktop\\t.jpg", t);
-	imwrite("C:\\Users\\徐图之\\Desktop\\dehazedImage84.jpg", dehazedImage);
-
+	imwrite("D:\\imageal\\dehaze\\datadark.jpg", g);
+	imwrite("D:\imageal\dehaze\data\\t.jpg", t);
+	imwrite("D:\imageal\dehaze\data\\dehazedImage84.jpg", dehazedImage);
 	imshow("原图", image);
 	imshow("去雾后的图", dehazedImage);
 	DeHaze::getInstance()->Deinit(guidedt);

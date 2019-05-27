@@ -98,30 +98,30 @@ Mat DeHaze::guildFilter(Mat I, Mat p, int r, double eps)
 Mat DeHaze::getDarkChannel(Mat &src)
 {
 	CvSize size = cvSize((src).rows, (src).cols);
-	Mat temp = Mat(size, CV_8UC1, Scalar(0));
-	uchar** pixel1;
-	uchar** pixel2;
-	uchar** pixel3;
+	Mat temp = Mat(size, CV_8UC1);
 	uchar  px;
 	for (int i = 0; i < src.rows; i++)
 	{
+		uchar* pixel1 = src.ptr<uchar>(i);
+		uchar* pixel2 = src.ptr<uchar>(i);
+		uchar* pixel3 = src.ptr<uchar>(i);
 		for (int j = 0; j < src.cols; j++)
 		{
-			pixel1[i][j] = src.ptr<uchar>(i)[j * 3];
-			pixel2[i][j] = src.ptr<uchar>(i)[j * 3+1];
-			pixel3[i][j] = src.ptr<uchar>(i)[j * 3 + 2];
-			if (pixel1[i][j]<pixel2[i][j])
+			pixel1[j] = src.ptr<uchar>(i)[j * 3];
+			pixel2[j] = src.ptr<uchar>(i)[j * 3+1];
+			pixel3[j] = src.ptr<uchar>(i)[j * 3 + 2];
+			if (pixel1[j]<pixel2[j])
 			{
-				px = pixel1[i][j];
+				px = pixel1[j];
 			}
 			else
 			{
-				px = pixel2[i][j];
+				px = pixel2[j];
 			}
 
-			if (px >pixel3[i][j])
+			if (px >pixel3[j])
 			{
-				px = pixel3[i][j];
+				px = pixel3[j];
 			}
 			temp.ptr<uchar>(i)[j] = px;
 		}
@@ -135,9 +135,9 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 	int pointNum = 0;   //满足要求的像素点数
 	double A;        //大气光强A
 	double pix;    //暗通道图中照亮度的前0.1%范围的像素值
-	uchar** pixel1;
-	uchar** pixel2;//按图中符合A的点，在雾图中对应的像素,三个通道，p1、p2、p3
-	uchar** pixel3;
+	//uchar** pixel1;
+	//uchar** pixel2;//按图中符合A的点，在雾图中对应的像素,三个通道，p1、p2、p3
+	//uchar** pixel3;
 
 	float stretch_p[256], stretch_p1[256], stretch_num[256];
 	//清空三个数组,初始化填充数组元素为0    
@@ -181,18 +181,21 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 
 	for (i = 0; i< hazeImage.rows; i++)
 	{
+		uchar* pixel1 = hazeImage.ptr<uchar>(i);
+		uchar* pixel2 = hazeImage.ptr<uchar>(i);
+		uchar* pixel3 = hazeImage.ptr<uchar>(i);
 		for (j = 0; j < hazeImage.cols; j++)
 		{
 			uchar temp = dark.ptr<uchar>(i)[j];
 			if (temp > pix)
 			{
-				pixel1[i][j] = hazeImage.ptr<uchar>(i)[j * 3];
-				pixel2[i][j] = hazeImage.ptr<uchar>(i)[j * 3 + 1];
-				pixel3[i][j] = hazeImage.ptr<uchar>(i)[j * 3 + 2];
+				pixel1[j] = hazeImage.ptr<uchar>(i)[j * 3];
+				pixel2[j] = hazeImage.ptr<uchar>(i)[j * 3 + 1];
+				pixel3[j] = hazeImage.ptr<uchar>(i)[j * 3 + 2];
 				pointNum++;
-				sum += pixel1[i][j];
-				sum += pixel2[i][j];
-				sum += pixel3[i][j];
+				sum += pixel1[j];
+				sum += pixel2[j];
+				sum += pixel3[j];
 
 			}
 		}
@@ -208,7 +211,7 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 Mat DeHaze::getMinIcy(Mat dark, int w)
 {
 	CvSize size = cvSize((dark).rows, (dark).cols);
-	Mat Icy = Mat(size, CV_8UC1, Scalar(0));
+	Mat Icy = Mat(size, CV_8UC1);
 	int hei = dark.rows;
 	int wid = dark.cols;
 	int hw = hei / w;
@@ -329,14 +332,13 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 Mat DeHaze::getTransmission(Mat Icy, double Ac)
 {
 	CvSize size = cvSize((Icy).rows, (Icy).cols);
-	Mat t = Mat(size, IPL_DEPTH_8U, Scalar(0));
+	Mat t = Mat(size, CV_8UC1);
 	for (int i = 0; i < t.rows; i++)
 	{
 		for (int j = 0; j < t.cols; j++)
 		{
 			uchar temp = Icy.ptr<uchar>(i)[j];
 			uchar tempt = (uchar)(1 - 0.95*temp / Ac);
-			cvSetReal2D(&t, i, j, tempt * 255);
 			t.ptr<uchar>(i)[j] = temp * 255;
 		}
 	}
@@ -358,16 +360,16 @@ Mat DeHaze::getimage(Mat &a)
 Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
 {
 	CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
-	Mat dehazedImage = Mat(size, CV_8UC3, Scalar(0,0,0));
+	Mat dehazedImage = Mat(size, CV_8UC3);
 	Mat r = Mat(size, CV_8UC1, Scalar(0));
 	Mat g = Mat(size, CV_8UC1, Scalar(0));
 	Mat b = Mat(size, CV_8UC1, Scalar(0));
 
 	cvSplit(&hazeImage, &b, &g, &r, NULL);
 
-	Mat dehaze_r = Mat(size, CV_8UC1, Scalar(0));
-	Mat dehaze_g = Mat(size, CV_8UC1, Scalar(0));
-	Mat dehaze_b = Mat(size, CV_8UC1, Scalar(0));
+	Mat dehaze_r = Mat(size, CV_8UC1);
+	Mat dehaze_g = Mat(size, CV_8UC1);
+	Mat dehaze_b = Mat(size, CV_8UC1);
 
 	for (int i = 0; i < r.rows; i++)
 	{
@@ -379,18 +381,16 @@ Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
 				tempt = 25.5;
 			}
 
-			double I_r = r.ptr<uchar>(i)[j];
+			uchar I_r = r.ptr<uchar>(i)[j];
 			uchar de_r = (uchar)(255 * (I_r - Ac) / tempt + Ac);
 			dehaze_r.ptr<uchar>(i)[j] = de_r;
 
-			double I_g = cvGetReal2D(&g, i, j);
-			double de_g = 255 * (I_g - Ac) / tempt + Ac;
-			cvSetReal2D(&dehaze_g, i, j, de_g);
-
-			double I_b = cvGetReal2D(&b, i, j);
-			double de_b = 255 * (I_b - Ac) / tempt + Ac;
-			cvSetReal2D(&dehaze_b, i, j, de_b);
-
+			uchar I_g = g.ptr<uchar>(i)[j];
+			uchar de_g = 255 * (I_g - Ac) / tempt + Ac;
+			dehaze_g.ptr<uchar>(i)[j] = de_g;
+			uchar I_b = b.ptr<uchar>(i)[j];
+			uchar de_b = 255 * (I_b - Ac) / tempt + Ac;
+			dehaze_b.ptr<uchar>(i)[j] = de_b;
 		}
 	}
 
