@@ -25,7 +25,7 @@ DeHaze* DeHaze::getInstance()
 	return &res;
 }
 
-Mat DeHaze::guildFilter(Mat I, Mat p, int r, double eps)
+Mat DeHaze::guildFilter(Mat& I, Mat& p, int r, double eps)
 {
 	/*
 	% GUIDEDFILTER   O(1) time implementation of guided filter.
@@ -98,7 +98,7 @@ Mat DeHaze::guildFilter(Mat I, Mat p, int r, double eps)
 Mat DeHaze::getDarkChannel(Mat &src)
 {
 	CvSize size = cvSize((src).rows, (src).cols);
-	Mat temp = Mat(size, CV_8UC1);
+	Mat temp = Mat(size, CV_8UC1,Scalar(0));
 	uchar  px;
 	for (int i = 0; i < src.rows; i++)
 	{
@@ -208,10 +208,10 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 	return A;
 }
 
-Mat DeHaze::getMinIcy(Mat dark, int w)
+Mat DeHaze::getMinIcy(Mat& dark, int w)
 {
 	CvSize size = cvSize((dark).rows, (dark).cols);
-	Mat Icy = Mat(size, CV_8UC1);
+	Mat Icy = Mat(size, CV_8UC1,Scalar(0));
 	int hei = dark.rows;
 	int wid = dark.cols;
 	int hw = hei / w;
@@ -230,10 +230,12 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 					if (newp < p)
 					{
 						p = newp;
+						Icy.ptr<uchar>(ii)[jj] = p;
 					}
 				}
 			}
 			//设置Icy的值
+/*
 			for (int ii = i - w; ii < i; ii++)
 			{
 				for (int jj = j - w; jj < j; jj++)
@@ -241,7 +243,7 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 					Icy.ptr<uchar>(ii)[jj] = p;
 				}
 			}
-
+*/
 		}
 	}
 
@@ -258,10 +260,11 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 				if (newp < p)
 				{
 					p = newp;
+					Icy.ptr<uchar>(ii)[j] = p;
 				}
 			}
 		}
-
+/*
 		//设置Icy的值
 		for (int ii = i - w; ii < i; ii++)
 		{
@@ -271,6 +274,7 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 				Icy.ptr<uchar>(ii)[j] = p;
 			}
 		}
+*/
 	}
 
 
@@ -287,10 +291,11 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 				if (newp < p)
 				{
 					p = newp;
+					Icy.ptr<uchar>(i)[jj] = p;
 				}
 			}
 		}
-
+/*
 		//设置Icy的值
 		for (int i = (hw - 1)*w; i < hei; i++)
 		{
@@ -300,7 +305,7 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 				Icy.ptr<uchar>(i)[jj] = p;
 			}
 		}
-
+*/
 	}
 
 	//处理最右下角的一个子块
@@ -314,10 +319,12 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 			if (newp < p)
 			{
 				p = newp;
+				Icy.ptr<uchar>(i)[j] = p;
 			}
 
 		}
 	}
+/*
 	for (int i = (hw - 1)*w; i < hei; i++)
 	{
 		for (int j = (ww - 1)*w; j < wid; j++)
@@ -325,14 +332,15 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 			Icy.ptr<uchar>(i)[j] = p;
 		}
 	}
+*/
 	return Icy;
 
 }
 
-Mat DeHaze::getTransmission(Mat Icy, double Ac)
+Mat DeHaze::getTransmission(Mat& Icy, double Ac)
 {
 	CvSize size = cvSize((Icy).rows, (Icy).cols);
-	Mat t = Mat(size, CV_8UC1);
+	Mat t = Mat(size, CV_8UC1,Scalar(0));
 	for (int i = 0; i < t.rows; i++)
 	{
 		for (int j = 0; j < t.cols; j++)
@@ -360,16 +368,16 @@ Mat DeHaze::getimage(Mat &a)
 Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
 {
 	CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
-	Mat dehazedImage = Mat(size, CV_8UC3);
+	Mat dehazedImage = Mat(size, CV_8UC3,Scalar(0,0,0));
 	Mat r = Mat(size, CV_8UC1, Scalar(0));
 	Mat g = Mat(size, CV_8UC1, Scalar(0));
 	Mat b = Mat(size, CV_8UC1, Scalar(0));
 
 	cvSplit(&hazeImage, &b, &g, &r, NULL);
 
-	Mat dehaze_r = Mat(size, CV_8UC1);
-	Mat dehaze_g = Mat(size, CV_8UC1);
-	Mat dehaze_b = Mat(size, CV_8UC1);
+	Mat dehaze_r = Mat(size, CV_8UC1, Scalar(0));
+	Mat dehaze_g = Mat(size, CV_8UC1, Scalar(0));
+	Mat dehaze_b = Mat(size, CV_8UC1, Scalar(0));
 
 	for (int i = 0; i < r.rows; i++)
 	{
