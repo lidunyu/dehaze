@@ -4,6 +4,7 @@ int main()
 {
 	cout << "print here" << endl;
 	Mat image= imread("D:\\imageal\\dehaze\\data\\1.jpg");
+	cout << "image rows " << image.rows << " image cols " << image.cols << " image channels " << image.channels() << endl;
 	CvSize size = cvSize((image).rows, (image).cols);
 	Mat g = Mat(size, CV_8UC1,Scalar(0));
 	g = DeHaze::getInstance()->getDarkChannel(image);
@@ -16,6 +17,7 @@ int main()
 	cout << "print here after Icy" << endl;
 	Icy = DeHaze::getInstance()->getMinIcy(g, 5);
 	cout << "print here after111 Icy" << endl;
+	cout << "Icy rows " << Icy.rows << " Icy cols " << Icy.cols << " Icy channels " << Icy.channels() << endl;
 	//投射图t
 	Mat t = Mat(size, CV_8UC1,Scalar(0));
 	cout << "print here before trans" << endl;
@@ -23,8 +25,10 @@ int main()
 	cout << "print here after trans" << endl;
 	//获得guide image
 	Mat image_src = image.clone();
-	Mat image_gray(image_src.size(), CV_8UC1,Scalar(0));
+	Mat image_gray(image_src.size(), CV_8UC1);
+	cout << "image_gray rows " << image_gray.rows << " image_gray cols " << image_gray.cols << " image_gray channels " << image_gray.channels() << endl;
 	cvtColor(image_src, image_gray, CV_BGR2GRAY);
+	cout << "image_gray rows " << image_gray.rows << " image_gray cols " << image_gray.cols << " image_gray channels " << image_gray.channels() << endl;
 	Mat guide = DeHaze::getInstance()->getimage(image_gray);
 	int r = 8;
 	double eps = 0.04;

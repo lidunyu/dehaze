@@ -339,8 +339,9 @@ Mat DeHaze::getMinIcy(Mat& dark, int w)
 
 Mat DeHaze::getTransmission(Mat& Icy, double Ac)
 {
-	CvSize size = cvSize((Icy).rows, (Icy).cols);
+	CvSize size = cvSize((Icy).cols, (Icy).rows);
 	Mat t = Mat(size, CV_8UC1,Scalar(0));
+	cout << "t rows " << t.rows << " t cols " << t.cols <<" t channals "<<t.channels()<<endl;
 	for (int i = 0; i < t.rows; i++)
 	{
 		for (int j = 0; j < t.cols; j++)
@@ -356,11 +357,13 @@ Mat DeHaze::getTransmission(Mat& Icy, double Ac)
 //convert image depth to CV_64F
 Mat DeHaze::getimage(Mat &a)
 {
-	int hei = a.rows;
-	int wid = a.cols;
-	Mat I(hei, wid, CV_64FC1);
+	CvSize size = cvSize(a.rows, a.cols);
+	//int hei = a.rows;
+	//int wid = a.cols;
+	Mat I(size, CV_64FC1);
 	//convert image depth to CV_64F  
 	a.convertTo(I, CV_64FC1, 1.0 / 255.0);
+	cout << "I rows " << I.rows << " I cols " << I.cols << " I channels " << I.channels()<< endl;
 	return I;
 
 }
