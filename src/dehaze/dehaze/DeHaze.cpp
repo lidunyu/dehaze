@@ -371,40 +371,29 @@ Mat DeHaze::getimage(Mat &a)
 Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
 {
 	CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
+	Mat hImage = hazeImage.clone();
 	Mat dehazedImage = Mat(size, CV_8UC3,Scalar(0,0,0));
-	Mat r = Mat(size, CV_8UC1, Scalar(0));
-	Mat g = Mat(size, CV_8UC1, Scalar(0));
-	Mat b = Mat(size, CV_8UC1, Scalar(0));
-
-	cvSplit(&hazeImage, &b, &g, &r, NULL);
-
-	Mat dehaze_r = Mat(size, CV_8UC1, Scalar(0));
-	Mat dehaze_g = Mat(size, CV_8UC1, Scalar(0));
-	Mat dehaze_b = Mat(size, CV_8UC1, Scalar(0));
+	Mat r, b, g;
+	vector<Mat> rgbChannels;
+	split(hImage, rgbChannels);
+	b = rgbChannels.at(0);
+	g = rgbChannels.at(1);
+	r = rgbChannels.at(2);
 
 	for (int i = 0; i < r.rows; i++)
 	{
 		for (int j = 0; j < r.cols; j++)
 		{
-			double tempt = cvGetReal2D(&guidedt, i, j);
+			double tempt = cvGetReal2D(guidedt, i, j);
 			if (tempt / 255 < 0.1)
 			{
 				tempt = 25.5;
 			}
-
-			uchar I_r = r.ptr<uchar>(i)[j];
-			uchar de_r = (uchar)(255 * (I_r - Ac) / tempt + Ac);
-			dehaze_r.ptr<uchar>(i)[j] = de_r;
-
-			uchar I_g = g.ptr<uchar>(i)[j];
-			uchar de_g = 255 * (I_g - Ac) / tempt + Ac;
-			dehaze_g.ptr<uchar>(i)[j] = de_g;
-			uchar I_b = b.ptr<uchar>(i)[j];
-			uchar de_b = 255 * (I_b - Ac) / tempt + Ac;
-			dehaze_b.ptr<uchar>(i)[j] = de_b;
+			r.ptr<uchar>(i)[j] = (uchar)(255 * (r.ptr<uchar>(i)[j] - Ac) / tempt + Ac);
+			g.ptr<uchar>(i)[j]= (uchar)(255 * (g.ptr<uchar>(i)[j] - Ac) / tempt + Ac);
+			b.ptr<uchar>(i)[j]= (uchar)(255 * (b.ptr<uchar>(i)[j] - Ac) / tempt + Ac);
 		}
 	}
-
-	cvMerge(&dehaze_b, &dehaze_g, &dehaze_r, 0, &dehazedImage);
+	merge(rgbChannels, dehazedImage);
 	return dehazedImage;
 }
