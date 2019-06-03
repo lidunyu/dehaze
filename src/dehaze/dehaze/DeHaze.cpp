@@ -129,7 +129,7 @@ Mat DeHaze::getDarkChannel(Mat &src)
 	return  temp;
 }
 
-double DeHaze::getA(Mat dark, Mat hazeImage)
+double DeHaze::getA(Mat &dark, Mat &hazeImage)
 {
 	double sum = 0;   //像素点符合条件A的和
 	int pointNum = 0;   //满足要求的像素点数
@@ -339,8 +339,8 @@ Mat DeHaze::getMinIcy(Mat& dark, int w)
 
 Mat DeHaze::getTransmission(Mat& Icy, double Ac)
 {
-	CvSize size = cvSize((Icy).cols, (Icy).rows);
-	Mat t = Mat(size, CV_8UC1,Scalar(0));
+	//CvSize size = cvSize((Icy).rows, (Icy).cols);
+	Mat t = Mat(Icy.size(), CV_8UC1,Scalar(0));
 	cout << "t rows " << t.rows << " t cols " << t.cols <<" t channals "<<t.channels()<<endl;
 	for (int i = 0; i < t.rows; i++)
 	{
@@ -368,32 +368,39 @@ Mat DeHaze::getimage(Mat &a)
 
 }
 
-Mat DeHaze::getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac)
+Mat DeHaze::getDehazedImage(Mat& hazeImage, Mat& guidedt, double Ac)
 {
 	CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
-	Mat hImage = hazeImage.clone();
-	Mat dehazedImage = Mat(size, CV_8UC3,Scalar(0,0,0));
+	Mat hImage;
+	hazeImage.copyTo(hImage);
+	Mat dehazedImage = Mat(size, CV_8UC3);
 	Mat r, b, g;
 	vector<Mat> rgbChannels;
+	//vector<Mat> mbgr(3);
 	split(hImage, rgbChannels);
 	b = rgbChannels.at(0);
 	g = rgbChannels.at(1);
 	r = rgbChannels.at(2);
-
+	//Mat bk1(size, CV_8UC1, Scalar(0));
+	//Mat imageB(size, CV_8UC3);
+	//mbgr[0] = rgbChannels[0];
+	//mbgr[1] = bk1;
+	//mbgr[2] = bk1;
+	//merge(mbgr, imageB);
 	for (int i = 0; i < r.rows; i++)
 	{
 		for (int j = 0; j < r.cols; j++)
 		{
-			double tempt = cvGetReal2D(guidedt, i, j);
+			uchar tempt = guidedt.ptr<uchar>(i)[j];
 			if (tempt / 255 < 0.1)
 			{
 				tempt = 25.5;
 			}
-			r.ptr<uchar>(i)[j] = (uchar)(255 * (r.ptr<uchar>(i)[j] - Ac) / tempt + Ac);
-			g.ptr<uchar>(i)[j]= (uchar)(255 * (g.ptr<uchar>(i)[j] - Ac) / tempt + Ac);
-			b.ptr<uchar>(i)[j]= (uchar)(255 * (b.ptr<uchar>(i)[j] - Ac) / tempt + Ac);
+			r.ptr<uchar>(i)[j] = 255 * (r.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
+			g.ptr<uchar>(i)[j]= 255 * (g.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
+			b.ptr<uchar>(i)[j]= 255 * (b.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
 		}
 	}
-	merge(rgbChannels, dehazedImage);
-	return dehazedImage;
+	merge(rgbChannels, hImage);
+	return hImage;
 }

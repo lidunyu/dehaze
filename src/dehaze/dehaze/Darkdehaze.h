@@ -24,9 +24,9 @@ public:
 	Mat guildFilter(Mat& I, Mat& p, int r, double eps);
 	Mat getDarkChannel(Mat &src);
 	Mat getMinIcy(Mat& dark, int w);
-	double getA(Mat dark, Mat hazeImage);
+	double getA(Mat& dark, Mat& hazeImage);
 	Mat getTransmission(Mat& Icy, double Ac);
-	Mat getDehazedImage(Mat hazeImage, IplImage* guidedt, double Ac);
+	Mat getDehazedImage(Mat& hazeImage, Mat& guidedt, double Ac);
 private:
 	bool m_init;
 	bool is_preview;
