@@ -25,10 +25,10 @@ DeHaze* DeHaze::getInstance()
 	return &res;
 }
 
-Mat DeHaze::guildFilter(Mat& I, Mat& p, int r, double eps)
+Mat DeHaze::guildFilter(Mat I_org, Mat p_org, int r, double eps, int s)
 {
 	/*
-	% GUIDEDFILTER   O(1) time implementation of guided filter.
+	% GUIDEDFILTER   O(N) time implementation of guided filter.
 	%
 	%   - guidance image: I (should be a gray-scale/single channel image)
 	%   - filtering input image: p (should be a gray-scale/single channel image)
@@ -36,69 +36,78 @@ Mat DeHaze::guildFilter(Mat& I, Mat& p, int r, double eps)
 	%   - regularization parameter: eps
 	*/
 
-	Mat _I;
-	I.convertTo(_I, CV_64FC1);
-	I = _I;
+	cv::Mat I, _I;
+	I_org.convertTo(_I, CV_64FC1, 1.0 / 255);
 
-	Mat _p;
-	p.convertTo(_p, CV_64FC1);
-	p = _p;
+	resize(_I, I, Size(), 1.0 / s, 1.0 / s, 1);
 
-	//[hei, wid] = size(I);  
+
+
+	cv::Mat p, _p;
+	p_org.convertTo(_p, CV_64FC1, 1.0 / 255);
+	//p = _p;
+	resize(_p, p, Size(), 1.0 / s, 1.0 / s, 1);
+
+	//[hei, wid] = size(I);    
 	int hei = I.rows;
 	int wid = I.cols;
 
-	//N = boxfilter(ones(hei, wid), r); % the size of each local patch; N=(2r+1)^2 except for boundary pixels.  
-	Mat N;
-	boxFilter(cv::Mat::ones(hei, wid, I.type()), N, CV_64FC1, cv::Size(r, r));
+	r = (2 * r + 1) / s + 1;//因为opencv自带的boxFilter（）中的Size,比如9x9,我们说半径为4   
 
-	//mean_I = boxfilter(I, r) ./ N;  
-	Mat mean_I;
-	boxFilter(I, mean_I, CV_64FC1, cv::Size(r, r));
+							//mean_I = boxfilter(I, r) ./ N;    
+	cv::Mat mean_I;
+	cv::boxFilter(I, mean_I, CV_64FC1, cv::Size(r, r));
 
-	//mean_p = boxfilter(p, r) ./ N;  
-	Mat mean_p;
-	boxFilter(p, mean_p, CV_64FC1, cv::Size(r, r));
+	//mean_p = boxfilter(p, r) ./ N;    
+	cv::Mat mean_p;
+	cv::boxFilter(p, mean_p, CV_64FC1, cv::Size(r, r));
 
-	//mean_Ip = boxfilter(I.*p, r) ./ N;  
-	Mat mean_Ip;
-	boxFilter(I.mul(p), mean_Ip, CV_64FC1, cv::Size(r, r));
+	//mean_Ip = boxfilter(I.*p, r) ./ N;    
+	cv::Mat mean_Ip;
 
-	//cov_Ip = mean_Ip - mean_I .* mean_p; % this is the covariance of (I, p) in each local patch.  
-	Mat cov_Ip = mean_Ip - mean_I.mul(mean_p);
+	cv::boxFilter(I.mul(p), mean_Ip, CV_64FC1, cv::Size(r, r));
 
-	//mean_II = boxfilter(I.*I, r) ./ N;  
-	Mat mean_II;
-	boxFilter(I.mul(I), mean_II, CV_64FC1, cv::Size(r, r));
+	//cov_Ip = mean_Ip - mean_I .* mean_p; % this is the covariance of (I, p) in each local patch.    
+	cv::Mat cov_Ip = mean_Ip - mean_I.mul(mean_p);
 
-	//var_I = mean_II - mean_I .* mean_I;  
-	Mat var_I = mean_II - mean_I.mul(mean_I);
+	//mean_II = boxfilter(I.*I, r) ./ N;    
+	cv::Mat mean_II;
+	cv::boxFilter(I.mul(I), mean_II, CV_64FC1, cv::Size(r, r));
 
-	//a = cov_Ip ./ (var_I + eps); % Eqn. (5) in the paper;     
-	Mat a = cov_Ip / (var_I + eps);
+	//var_I = mean_II - mean_I .* mean_I;    
+	cv::Mat var_I = mean_II - mean_I.mul(mean_I);
 
-	//b = mean_p - a .* mean_I; % Eqn. (6) in the paper;  
-	Mat b = mean_p - a.mul(mean_I);
+	//a = cov_Ip ./ (var_I + eps); % Eqn. (5) in the paper;       
+	cv::Mat a = cov_Ip / (var_I + eps);
 
-	//mean_a = boxfilter(a, r) ./ N;  
-	Mat mean_a;
-	boxFilter(a, mean_a, CV_64FC1, cv::Size(r, r));
-	mean_a = mean_a / N;
+	//b = mean_p - a .* mean_I; % Eqn. (6) in the paper;    
+	cv::Mat b = mean_p - a.mul(mean_I);
 
-	//mean_b = boxfilter(b, r) ./ N;  
-	Mat mean_b;
-	boxFilter(b, mean_b, CV_64FC1, cv::Size(r, r));
-	mean_b = mean_b / N;
+	//mean_a = boxfilter(a, r) ./ N;    
+	cv::Mat mean_a;
+	cv::boxFilter(a, mean_a, CV_64FC1, cv::Size(r, r));
+	Mat rmean_a;
+	resize(mean_a, rmean_a, Size(I_org.cols, I_org.rows), 1);
 
-	//q = mean_a .* I + mean_b; % Eqn. (8) in the paper;  
-	Mat q = mean_a.mul(I) + mean_b;
+	//mean_b = boxfilter(b, r) ./ N;    
+	cv::Mat mean_b;
+	cv::boxFilter(b, mean_b, CV_64FC1, cv::Size(r, r));
+	Mat rmean_b;
+	resize(mean_b, rmean_b, Size(I_org.cols, I_org.rows), 1);
+
+	//q = mean_a .* I + mean_b; % Eqn. (8) in the paper;    
+	cv::Mat q = rmean_a.mul(_I) + rmean_b;
 
 	return q;
 }
-Mat DeHaze::getDarkChannel(Mat &src)
+
+Mat DeHaze::getDarkChannel(Mat src)
 {
-	CvSize size = cvSize((src).rows, (src).cols);
-	Mat temp = Mat(size, CV_8UC1,Scalar(0));
+	//CvSize size = cvSize((src).rows, (src).cols);
+	//int height = src.rows;
+	//int wide = src.cols;
+	Mat temp = Mat(src.size(), CV_8UC1);
+	cout << "temp rows " << temp.rows << " temp cols " << temp.cols << " temp channels " << temp.channels() << endl;
 	uchar  px;
 	for (int i = 0; i < src.rows; i++)
 	{
@@ -129,12 +138,12 @@ Mat DeHaze::getDarkChannel(Mat &src)
 	return  temp;
 }
 
-double DeHaze::getA(Mat &dark, Mat &hazeImage)
+double DeHaze::getA(Mat dark, Mat hazeImage)
 {
 	double sum = 0;   //像素点符合条件A的和
 	int pointNum = 0;   //满足要求的像素点数
 	double A;        //大气光强A
-	double pix;    //暗通道图中照亮度的前0.1%范围的像素值
+	uchar pix;    //暗通道图中照亮度的前0.1%范围的像素值
 	//uchar** pixel1;
 	//uchar** pixel2;//按图中符合A的点，在雾图中对应的像素,三个通道，p1、p2、p3
 	//uchar** pixel3;
@@ -171,7 +180,7 @@ double DeHaze::getA(Mat &dark, Mat &hazeImage)
 			stretch_p1[i] += stretch_p[j];
 			if (stretch_p1[i]>0.999)
 			{
-				pix = (double)i;
+				pix = (uchar)i;
 				i = 256;
 				break;
 			}
@@ -208,10 +217,10 @@ double DeHaze::getA(Mat &dark, Mat &hazeImage)
 	return A;
 }
 
-Mat DeHaze::getMinIcy(Mat& dark, int w)
+Mat DeHaze::getMinIcy(Mat dark, int w)
 {
-	CvSize size = cvSize((dark).rows, (dark).cols);
-	Mat Icy = Mat(size, CV_8UC1,Scalar(0));
+	//CvSize size = cvSize((dark).rows, (dark).cols);
+	Mat Icy = Mat(dark.size(), CV_8UC1,Scalar(0));
 	int hei = dark.rows;
 	int wid = dark.cols;
 	int hw = hei / w;
@@ -337,7 +346,7 @@ Mat DeHaze::getMinIcy(Mat& dark, int w)
 
 }
 
-Mat DeHaze::getTransmission(Mat& Icy, double Ac)
+Mat DeHaze::getTransmission(Mat Icy, double Ac)
 {
 	//CvSize size = cvSize((Icy).rows, (Icy).cols);
 	Mat t = Mat(Icy.size(), CV_8UC1,Scalar(0));
@@ -348,19 +357,19 @@ Mat DeHaze::getTransmission(Mat& Icy, double Ac)
 		{
 			uchar temp = Icy.ptr<uchar>(i)[j];
 			uchar tempt = (uchar)(1 - 0.95*temp / Ac);
-			t.ptr<uchar>(i)[j] = temp * 255;
+			t.ptr<uchar>(i)[j] = tempt * 255;
 		}
 	}
 	return t;
 }
 
 //convert image depth to CV_64F
-Mat DeHaze::getimage(Mat &a)
+Mat DeHaze::getimage(Mat a)
 {
-	CvSize size = cvSize(a.rows, a.cols);
+	//CvSize size = cvSize(a.rows, a.cols);
 	//int hei = a.rows;
 	//int wid = a.cols;
-	Mat I(size, CV_64FC1);
+	Mat I(a.size(), CV_64FC1);
 	//convert image depth to CV_64F  
 	a.convertTo(I, CV_64FC1, 1.0 / 255.0);
 	cout << "I rows " << I.rows << " I cols " << I.cols << " I channels " << I.channels()<< endl;
@@ -368,16 +377,16 @@ Mat DeHaze::getimage(Mat &a)
 
 }
 
-Mat DeHaze::getDehazedImage(Mat& hazeImage, Mat& guidedt, double Ac)
+Mat DeHaze::getDehazedImage(Mat hazeImage, Mat guidedt, double Ac)
 {
-	CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
-	Mat hImage;
-	hazeImage.copyTo(hImage);
-	Mat dehazedImage = Mat(size, CV_8UC3);
+	//CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
+	//Mat hImage;
+	//hazeImage.copyTo(hImage);
+	//Mat dehazedImage = Mat(hazeImage.size(), CV_8UC3);
 	Mat r, b, g;
 	vector<Mat> rgbChannels;
 	//vector<Mat> mbgr(3);
-	split(hImage, rgbChannels);
+	split(hazeImage, rgbChannels);
 	b = rgbChannels.at(0);
 	g = rgbChannels.at(1);
 	r = rgbChannels.at(2);
@@ -387,6 +396,8 @@ Mat DeHaze::getDehazedImage(Mat& hazeImage, Mat& guidedt, double Ac)
 	//mbgr[1] = bk1;
 	//mbgr[2] = bk1;
 	//merge(mbgr, imageB);
+	cout << "b rows " << b.rows << " b cols " << b.cols << " b channels " << b.channels() << endl;
+	imshow("b", r);
 	for (int i = 0; i < r.rows; i++)
 	{
 		for (int j = 0; j < r.cols; j++)
@@ -401,6 +412,9 @@ Mat DeHaze::getDehazedImage(Mat& hazeImage, Mat& guidedt, double Ac)
 			b.ptr<uchar>(i)[j]= 255 * (b.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
 		}
 	}
-	merge(rgbChannels, hImage);
-	return hImage;
+	imshow("r", r);
+	merge(rgbChannels, hazeImage);
+	cout << "hazeImage rows " << hazeImage.rows << " hazeImage cols " << hazeImage.cols << " hazeImage channels " << hazeImage.channels() << endl;
+	imshow("hazeImage", hazeImage);
+	return hazeImage;
 }

@@ -20,13 +20,13 @@ public:
 	void Deinit(IplImage* res);
 	~DeHaze();
 	static DeHaze* getInstance();
-	Mat getimage(Mat &a);
-	Mat guildFilter(Mat& I, Mat& p, int r, double eps);
-	Mat getDarkChannel(Mat &src);
-	Mat getMinIcy(Mat& dark, int w);
-	double getA(Mat& dark, Mat& hazeImage);
-	Mat getTransmission(Mat& Icy, double Ac);
-	Mat getDehazedImage(Mat& hazeImage, Mat& guidedt, double Ac);
+	Mat getimage(Mat a);
+	Mat guildFilter(Mat I, Mat p, int r, double eps, int s);
+	Mat getDarkChannel(Mat src);
+	Mat getMinIcy(Mat dark, int w);
+	double getA(Mat dark, Mat hazeImage);
+	Mat getTransmission(Mat Icy, double Ac);
+	Mat getDehazedImage(Mat hazeImage, Mat guidedt, double Ac);
 private:
 	bool m_init;
 	bool is_preview;
