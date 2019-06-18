@@ -106,7 +106,7 @@ Mat DeHaze::getDarkChannel(Mat src)
 	//CvSize size = cvSize((src).rows, (src).cols);
 	//int height = src.rows;
 	//int wide = src.cols;
-	Mat temp = Mat(src.size(), CV_8UC1);
+	Mat temp = Mat(src.size(), CV_8UC1,Scalar(0));
 	cout << "temp rows " << temp.rows << " temp cols " << temp.cols << " temp channels " << temp.channels() << endl;
 	uchar  px;
 	for (int i = 0; i < src.rows; i++)
@@ -143,30 +143,26 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 	double sum = 0;   //像素点符合条件A的和
 	int pointNum = 0;   //满足要求的像素点数
 	double A;        //大气光强A
-	uchar pix;    //暗通道图中照亮度的前0.1%范围的像素值
-	//uchar** pixel1;
-	//uchar** pixel2;//按图中符合A的点，在雾图中对应的像素,三个通道，p1、p2、p3
-	//uchar** pixel3;
-
-	float stretch_p[256], stretch_p1[256], stretch_num[256];
-	//清空三个数组,初始化填充数组元素为0    
-	memset(stretch_p, 0, sizeof(stretch_p));
-	memset(stretch_p1, 0, sizeof(stretch_p1));
-	memset(stretch_num, 0, sizeof(stretch_num));
-
+	int pix;    //暗通道图中照亮度的前0.1%范围的像素值
+	vector<float> stretch_p(256, 0);
+	vector<float> stretch_p1(256, 0);
+	vector<float> stretch_num(256, 0);
 	int nHeight = dark.rows;
 	int nWidth = dark.cols;
 	int i, j;
+	float result=0.0f;
+	//cout << "hazeImage rows " << hazeImage.rows << " ccc cols " << hazeImage.cols << " ccc channels " << hazeImage.channels() << endl;
+	//imshow("暗通道原图像", hazeImage);
 	for (i = 0; i<nHeight; i++)
 	{
 		for (j = 0; j<nWidth; j++)
 		{
 			uchar  pixel0 = dark.ptr<uchar>(i)[j];
-			int   pixel = (int)pixel0;
+			int  pixel = (int)pixel0;
 			stretch_num[pixel]++;
 		}
 	}
-	//统计各个灰度级出现的概率  
+ 
 	for (i = 0; i<256; i++)
 	{
 		stretch_p[i] = stretch_num[i] / (nHeight*nWidth);
@@ -178,16 +174,16 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 		for (j = 0; j <= i; j++)
 		{
 			stretch_p1[i] += stretch_p[j];
-			if (stretch_p1[i]>0.999)
+			if (stretch_p1[i]>0.999f)
 			{
-				pix = (uchar)i;
+				pix = i;
 				i = 256;
 				break;
 			}
 
 		}
 	}
-
+	cout << "最终的分界点为： " << pix << endl;
 	for (i = 0; i< hazeImage.rows; i++)
 	{
 		uchar* pixel1 = hazeImage.ptr<uchar>(i);
@@ -209,6 +205,8 @@ double DeHaze::getA(Mat dark, Mat hazeImage)
 			}
 		}
 	}
+	cout << "sum 的值为： " << sum << endl;
+	cout << "pointNum的值为： " << pointNum << endl;
 	A = sum / (3 * pointNum);
 	if (A > 220.0)
 	{
@@ -243,16 +241,6 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 					}
 				}
 			}
-			//设置Icy的值
-/*
-			for (int ii = i - w; ii < i; ii++)
-			{
-				for (int jj = j - w; jj < j; jj++)
-				{
-					Icy.ptr<uchar>(ii)[jj] = p;
-				}
-			}
-*/
 		}
 	}
 
@@ -273,17 +261,6 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 				}
 			}
 		}
-/*
-		//设置Icy的值
-		for (int ii = i - w; ii < i; ii++)
-		{
-
-			for (int j = (ww - 1)*w; j < wid; j++)
-			{
-				Icy.ptr<uchar>(ii)[j] = p;
-			}
-		}
-*/
 	}
 
 
@@ -304,17 +281,6 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 				}
 			}
 		}
-/*
-		//设置Icy的值
-		for (int i = (hw - 1)*w; i < hei; i++)
-		{
-
-			for (int jj = j - w; jj < j; jj++)
-			{
-				Icy.ptr<uchar>(i)[jj] = p;
-			}
-		}
-*/
 	}
 
 	//处理最右下角的一个子块
@@ -333,22 +299,12 @@ Mat DeHaze::getMinIcy(Mat dark, int w)
 
 		}
 	}
-/*
-	for (int i = (hw - 1)*w; i < hei; i++)
-	{
-		for (int j = (ww - 1)*w; j < wid; j++)
-		{
-			Icy.ptr<uchar>(i)[j] = p;
-		}
-	}
-*/
 	return Icy;
 
 }
 
 Mat DeHaze::getTransmission(Mat Icy, double Ac)
 {
-	//CvSize size = cvSize((Icy).rows, (Icy).cols);
 	Mat t = Mat(Icy.size(), CV_8UC1,Scalar(0));
 	cout << "t rows " << t.rows << " t cols " << t.cols <<" t channals "<<t.channels()<<endl;
 	for (int i = 0; i < t.rows; i++)
@@ -356,8 +312,8 @@ Mat DeHaze::getTransmission(Mat Icy, double Ac)
 		for (int j = 0; j < t.cols; j++)
 		{
 			uchar temp = Icy.ptr<uchar>(i)[j];
-			uchar tempt = (uchar)(1 - 0.95*temp / Ac);
-			t.ptr<uchar>(i)[j] = tempt * 255;
+			double tempt = 1 - 0.95*(double)temp / Ac;
+			t.ptr<uchar>(i)[j] = (uchar)(tempt * 255);
 		}
 	}
 	return t;
@@ -379,40 +335,31 @@ Mat DeHaze::getimage(Mat a)
 
 Mat DeHaze::getDehazedImage(Mat hazeImage, Mat guidedt, double Ac)
 {
-	//CvSize size = cvSize((hazeImage).rows, (hazeImage).cols);
-	//Mat hImage;
-	//hazeImage.copyTo(hImage);
-	//Mat dehazedImage = Mat(hazeImage.size(), CV_8UC3);
 	Mat r, b, g;
 	vector<Mat> rgbChannels;
-	//vector<Mat> mbgr(3);
 	split(hazeImage, rgbChannels);
 	b = rgbChannels.at(0);
 	g = rgbChannels.at(1);
 	r = rgbChannels.at(2);
-	//Mat bk1(size, CV_8UC1, Scalar(0));
-	//Mat imageB(size, CV_8UC3);
-	//mbgr[0] = rgbChannels[0];
-	//mbgr[1] = bk1;
-	//mbgr[2] = bk1;
-	//merge(mbgr, imageB);
 	cout << "b rows " << b.rows << " b cols " << b.cols << " b channels " << b.channels() << endl;
 	imshow("b", r);
+	cout << "AC的值是： " << Ac << endl;
 	for (int i = 0; i < r.rows; i++)
 	{
 		for (int j = 0; j < r.cols; j++)
 		{
 			uchar tempt = guidedt.ptr<uchar>(i)[j];
-			if (tempt / 255 < 0.1)
+			if ((double)tempt / 255 < 0.1)
 			{
 				tempt = 25.5;
 			}
-			r.ptr<uchar>(i)[j] = 255 * (r.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
-			g.ptr<uchar>(i)[j]= 255 * (g.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
-			b.ptr<uchar>(i)[j]= 255 * (b.ptr<uchar>(i)[j] - Ac) / tempt + Ac;
+			r.ptr<uchar>(i)[j] = abs((255 * (r.ptr<uchar>(i)[j] - Ac) / (double)tempt + Ac));
+			g.ptr<uchar>(i)[j]= abs((255 * (g.ptr<uchar>(i)[j] - Ac)) / (double)tempt + Ac);
+			b.ptr<uchar>(i)[j]= abs((255 * (b.ptr<uchar>(i)[j] - Ac)) / (double)tempt + Ac);
 		}
 	}
 	imshow("r", r);
+	cout << "r rows " << r.rows << " r cols " << r.cols << " r channels " << r.channels() << endl;
 	merge(rgbChannels, hazeImage);
 	cout << "hazeImage rows " << hazeImage.rows << " hazeImage cols " << hazeImage.cols << " hazeImage channels " << hazeImage.channels() << endl;
 	imshow("hazeImage", hazeImage);

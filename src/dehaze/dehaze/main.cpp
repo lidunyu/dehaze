@@ -14,10 +14,20 @@ int main()
 	imshow("aaa", image1);
 	g = DeHaze::getInstance()->getDarkChannel(image1);
 	cout << "gg rows " << g.rows << " gg cols " << g.cols << " gg channels " << g.channels() << endl;
+	image.copyTo(image1);
 	imshow("ccc", image1);
+	
 	cout << "ccc rows " << image1.rows << " ccc cols " << image1.cols << " ccc channels " << image1.channels() << endl;
 	imshow("g", g);
+	//cout << "【默认风格】" << endl <<g<< endl << endl;
 	double A = DeHaze::getInstance()->getA(g, image1);   //大气光强A
+	if (A == 0) {
+		cout << "大气光强的值为0" << endl;
+	}
+	else{
+		cout << "大气光强的值为  " << A << endl;
+	}
+	cout <<"大气光强"<<DeHaze::getInstance()->getA(g, image1)<<endl;
 	//CvSize size1 = cvSize(g.rows, g.cols);
 	cout << "print here before Icy" << endl;
 	Mat Icy = Mat(g.size(), CV_8UC1,Scalar(0));
@@ -36,7 +46,7 @@ int main()
 	Mat image_src;
 	image.copyTo(image_src);
 	
-	Mat image_gray(image_src.size(), CV_8UC1);
+	Mat image_gray(image_src.size(), CV_8UC1,Scalar(0));
 	
 	cout << "image_gray rows " << image_gray.rows << " image_gray cols " << image_gray.cols << " image_gray channels " << image_gray.channels() << endl;
 	cvtColor(image_src, image_gray, CV_BGR2GRAY);
